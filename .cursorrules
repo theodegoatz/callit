@@ -1,0 +1,25 @@
+# CallIt — Cursor Context File
+# Keep this updated as you add tables, routes, and model logic
+
+## Project
+Baseball analytics app. Scores MLB manager decisions using WPA/EPA models.
+Lets fans make the same calls and compare against real managers.
+
+## Tech Stack
+- Language: Python (pipeline), TypeScript/Node (API), React Native Expo (app)
+- Database: PostgreSQL on Supabase
+- ORM: SQLAlchemy (Python), Prisma (Node API)
+
+## Naming Conventions
+- Python: snake_case for everything
+- TypeScript: camelCase for variables, PascalCase for types
+- Database: snake_case, always include created_at TIMESTAMPTZ
+
+## What 'Optimal Decision' Means
+Optimal = the decision that maximizes expected win probability at that
+exact moment, given the options actually available to the manager.
+NOT a post-hoc judgment based on outcome. If WPA(pull) - WPA(stay) < 0.02,
+the decision is AMBIGUOUS and should not be scored.
+
+## Database Schema (paste full CREATE TABLE statements here as you add them)
+

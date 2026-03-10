@@ -1,0 +1,2 @@
+-- db/schema.sql — Database table definitions for CallIt
+-- Add your CREATE TABLE statements here as you build the schema.
