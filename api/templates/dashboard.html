@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallIt — Manager Decision Analytics</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --accent: #4f8cff;
+            --green: #2ecc71;
+            --yellow: #f1c40f;
+            --red: #e74c3c;
+            --text: #e1e4ea;
+            --muted: #8892a4;
+            --border: #2a2e3a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        header h1 { font-size: 2rem; color: var(--accent); }
+        header p { color: var(--muted); margin-top: 0.3rem; }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 1.2rem;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+        .stat-card .label { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td { padding: 0.75rem 1rem; text-align: left; }
+        th {
+            background: var(--border);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+        .grade {
+            display: inline-block;
+            width: 2.2rem;
+            height: 2.2rem;
+            line-height: 2.2rem;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+        .grade-a { background: var(--green); color: #000; }
+        .grade-b { background: var(--accent); color: #000; }
+        .grade-c { background: var(--yellow); color: #000; }
+        .grade-d, .grade-f { background: var(--red); color: #fff; }
+        .score-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .score-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CallIt</h1>
+            <p>MLB Manager Decision Analytics</p>
+        </header>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="value">{{ n_games }}</div>
+                <div class="label">Games Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ n_decisions }}</div>
+                <div class="label">Decision Moments</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ managers|length }}</div>
+                <div class="label">Managers Graded</div>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Manager</th>
+                    <th>Team</th>
+                    <th>Decisions</th>
+                    <th>Optimal</th>
+                    <th>Score</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in managers %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ m.name }}</td>
+                    <td>{{ m.team }}</td>
+                    <td>{{ m.total_decisions }}</td>
+                    <td>{{ m.optimal_decisions }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <span>{{ "%.1f"|format(m.score) }}</span>
+                            <div class="score-bar" style="flex:1;">
+                                <div class="score-fill" style="width:{{ m.score }}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% set g = m.grade|lower %}
+                        {% if g.startswith('a') %}
+                        <span class="grade grade-a">{{ m.grade }}</span>
+                        {% elif g.startswith('b') %}
+                        <span class="grade grade-b">{{ m.grade }}</span>
+                        {% elif g.startswith('c') %}
+                        <span class="grade grade-c">{{ m.grade }}</span>
+                        {% else %}
+                        <span class="grade grade-d">{{ m.grade }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <footer>
+            <p>CallIt &mdash; Scoring MLB manager decisions using WPA/EPA models</p>
+        </footer>
+    </div>
+</body>
+</html>
