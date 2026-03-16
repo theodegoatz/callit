@@ -86,7 +86,7 @@ def extract_decisions(season: int = 2024):
                     "(game_id, inning, half, decision_type, team, description, "
                     " wpa_actual, context) "
                     "VALUES (:game_id, :inning, :half, :decision_type, :team, "
-                    " :description, :wpa_actual, :context::jsonb)"
+                    " :description, :wpa_actual, CAST(:context AS JSONB))"
                 ),
                 rows,
             )

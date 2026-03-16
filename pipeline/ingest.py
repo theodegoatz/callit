@@ -11,36 +11,46 @@ def ensure_data_dir():
 
 def _patched_schedule_and_record(season, team):
     """Wrapper around pybaseball.schedule_and_record that handles pandas 3.x issues."""
-    from pybaseball import schedule_and_record as _sar
-    import numpy as np
     import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        try:
-            return _sar(season, team)
-        except (ValueError, TypeError):
-            pass
+    import signal
 
-    import requests
-    from io import StringIO
-    url = f"https://www.baseball-reference.com/teams/{team}/{season}-schedule-scores.shtml"
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    tables = pd.read_html(StringIO(resp.text))
-    for tbl in tables:
-        if "R" in tbl.columns or "Tm" in tbl.columns:
-            tbl = tbl[tbl["Gm#"].apply(lambda x: str(x).isdigit())].copy()
-            if "Attendance" in tbl.columns:
-                tbl["Attendance"] = (
-                    tbl["Attendance"]
-                    .astype(str)
-                    .str.replace(r"[^0-9]", "", regex=True)
-                )
-                tbl["Attendance"] = pd.to_numeric(
-                    tbl["Attendance"], errors="coerce"
-                )
-            return tbl
-    raise ValueError("Could not parse schedule table")
+    class _Timeout(Exception):
+        pass
+
+    def _handler(signum, frame):
+        raise _Timeout()
+
+    old = signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(15)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            from pybaseball import schedule_and_record as _sar
+            return _sar(season, team)
+    except (ValueError, TypeError):
+        from io import StringIO
+        import requests
+        url = f"https://www.baseball-reference.com/teams/{team}/{season}-schedule-scores.shtml"
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        tables = pd.read_html(StringIO(resp.text))
+        for tbl in tables:
+            if "R" in tbl.columns or "Tm" in tbl.columns:
+                tbl = tbl[tbl["Gm#"].apply(lambda x: str(x).isdigit())].copy()
+                if "Attendance" in tbl.columns:
+                    tbl["Attendance"] = (
+                        tbl["Attendance"]
+                        .astype(str)
+                        .str.replace(r"[^0-9]", "", regex=True)
+                    )
+                    tbl["Attendance"] = pd.to_numeric(
+                        tbl["Attendance"], errors="coerce"
+                    )
+                return tbl
+        raise ValueError("Could not parse schedule table")
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
 
 
 def download_schedule(season: int = 2024) -> pd.DataFrame:
@@ -69,9 +79,25 @@ def download_schedule(season: int = 2024) -> pd.DataFrame:
                 print(f"  ✓ {team}: {len(df)} games")
             except Exception as e:
                 print(f"  ✗ {team}: {e}")
-        if not frames:
-            raise RuntimeError("Could not download any team schedules")
+        if len(frames) < 5:
+            print(f"[ingest] Only got {len(frames)} teams, falling back to sample data")
+            raise RuntimeError("Insufficient team data")
         combined = pd.concat(frames, ignore_index=True)
+        if "Gm#" in combined.columns:
+            combined = combined[combined["Gm#"].apply(
+                lambda x: str(x).replace(".0", "").isdigit()
+            )].copy()
+        for col in ("R", "RA", "Gm#"):
+            if col in combined.columns:
+                combined[col] = pd.to_numeric(combined[col], errors="coerce")
+        if "Attendance" in combined.columns:
+            combined["Attendance"] = pd.to_numeric(
+                combined["Attendance"].astype(str).str.replace(r"[^0-9.]", "", regex=True),
+                errors="coerce",
+            )
+        for col in combined.columns:
+            if combined[col].dtype == object:
+                combined[col] = combined[col].astype(str)
         combined.to_parquet(parquet)
         print(f"[ingest] Saved {len(combined)} rows → {parquet}")
         return combined

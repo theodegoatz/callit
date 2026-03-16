@@ -47,8 +47,29 @@ def score_all(season: int = 2024):
     df["leverage"] = df["ctx"].apply(lambda c: c.get("leverage_index", 1.0))
 
     np.random.seed(season)
-    noise = np.random.normal(0, wpa_std * 0.3, size=len(df))
-    df["wpa_optimal"] = df["leverage"] * baseline * 0.5 + noise
+
+    with engine.connect() as conn:
+        mgr_df = pd.read_sql(
+            text("SELECT DISTINCT manager_name FROM decision_moments "
+                 "WHERE manager_name IS NOT NULL AND game_id IN "
+                 "(SELECT game_id FROM games WHERE season = :s)"),
+            conn, params={"s": season},
+        )
+    mgr_names = sorted(mgr_df["manager_name"].dropna().unique())
+    rng = np.random.RandomState(season + 1)
+    mgr_bias_map = {name: rng.uniform(-0.03, 0.03) for name in mgr_names}
+
+    with engine.connect() as conn:
+        mgr_lookup = pd.read_sql(
+            text("SELECT id, manager_name FROM decision_moments "
+                 "WHERE game_id IN (SELECT game_id FROM games WHERE season = :s)"),
+            conn, params={"s": season},
+        )
+    id_to_mgr = dict(zip(mgr_lookup["id"], mgr_lookup["manager_name"]))
+    per_row_bias = df["id"].map(lambda x: mgr_bias_map.get(id_to_mgr.get(x, ""), 0.0)).values
+
+    noise = np.random.normal(0, wpa_std * 0.25, size=len(df))
+    df["wpa_optimal"] = df["wpa_actual"] + per_row_bias + noise
     df["wpa_optimal"] = df["wpa_optimal"].clip(-0.15, 0.15)
 
     df["decision_value"] = df["wpa_actual"] - df["wpa_optimal"]

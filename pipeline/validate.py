@@ -59,16 +59,19 @@ def validate(season: int = 2024):
     print(f"  Managers graded:       {n_graded:>6}")
 
     if not stats.empty:
-        n_optimal = int(stats["is_optimal"].sum())
         n_ambiguous = int(stats["is_ambiguous"].sum())
         scored = len(stats)
-        non_ambiguous = scored - n_ambiguous
-        optimal_pct = n_optimal / scored * 100 if scored else 0
-        clear_accuracy = n_optimal / non_ambiguous * 100 if non_ambiguous else 0
-        avg_dv = stats["decision_value"].mean()
+        dv = stats["decision_value"]
+        n_clear_optimal = int((dv >= 0.02).sum())
+        n_clear_suboptimal = int((dv < -0.02).sum())
+        non_ambiguous = n_clear_optimal + n_clear_suboptimal
+        n_optimal_total = int(stats["is_optimal"].sum())
+        optimal_pct = n_optimal_total / scored * 100 if scored else 0
+        clear_accuracy = n_clear_optimal / non_ambiguous * 100 if non_ambiguous else 0
+        avg_dv = dv.mean()
 
         print(f"\n  --- Scoring Metrics ---")
-        print(f"  Optimal decisions:     {n_optimal:>6} ({optimal_pct:.1f}%)")
+        print(f"  Optimal decisions:     {n_optimal_total:>6} ({optimal_pct:.1f}%)")
         print(f"  Ambiguous (|dv|<0.02): {n_ambiguous:>6} ({n_ambiguous/scored*100:.1f}%)")
         print(f"  Clear-call accuracy:   {clear_accuracy:.1f}%")
         print(f"  Avg decision value:    {avg_dv:>+.5f}")
