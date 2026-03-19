@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CallIt — Admin QA</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --accent: #4f8cff;
+            --text: #e1e4ea;
+            --muted: #8892a4;
+            --border: #2a2e3a;
+            --warn: #f1c40f;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        header { border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; padding-bottom: 1rem; }
+        h1 { color: var(--accent); font-size: 1.6rem; }
+        .sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.35rem; }
+        h2 {
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin: 1.75rem 0 0.65rem;
+            font-weight: 600;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+        }
+        .tile {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.9rem 1rem;
+        }
+        .tile .val { font-size: 1.35rem; font-weight: 700; color: var(--accent); }
+        .tile .lbl { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 0.9rem;
+        }
+        th, td { padding: 0.55rem 0.75rem; text-align: left; }
+        th { background: var(--border); color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+        tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .badge { color: var(--warn); font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Pipeline &amp; Data Health</h1>
+            <p class="sub">Admin QA console{% if cached %} <span class="badge">(cached response, up to 60s)</span>{% endif %}</p>
+        </header>
+
+        <h2>Pipeline &amp; Data Health</h2>
+        <div class="grid">
+            <div class="tile"><div class="val">{{ health.get('n_games', '—') }}</div><div class="lbl">Games</div></div>
+            <div class="tile"><div class="val">{{ health.get('n_decisions', '—') }}</div><div class="lbl">Decision moments</div></div>
+            <div class="tile"><div class="val">{{ health.get('n_managers', '—') }}</div><div class="lbl">Manager rows</div></div>
+            <div class="tile"><div class="val">{{ health.get('latest_game_date', '—') }}</div><div class="lbl">Latest game date</div></div>
+        </div>
+
+        <h2>Anomaly Checks</h2>
+        <div class="grid">
+            <div class="tile"><div class="val">{{ anomalies.get('dm_null_manager', '—') }}</div><div class="lbl">Decisions, null manager</div></div>
+            <div class="tile"><div class="val">{{ anomalies.get('dm_null_optimal', '—') }}</div><div class="lbl">Decisions, null is_optimal</div></div>
+            <div class="tile"><div class="val">{{ anomalies.get('games_no_decisions', '—') }}</div><div class="lbl">Games with no decisions</div></div>
+        </div>
+
+        <h2>Manager Attribution QA</h2>
+        <p class="sub" style="margin-bottom:0.5rem;">Managers with &lt;50 decisions but a non-null grade (should normally be empty).</p>
+        {% if mgr_qa %}
+        <table>
+            <thead><tr><th>Name</th><th>Team</th><th>Season</th><th>Decisions</th><th>Grade</th></tr></thead>
+            <tbody>
+                {% for m in mgr_qa %}
+                <tr>
+                    <td><a href="/managers/{{ m.name | pathquote }}">{{ m.name }}</a></td>
+                    <td>{{ m.team }}</td>
+                    <td>{{ m.season }}</td>
+                    <td>{{ m.total_decisions }}</td>
+                    <td>{{ m.grade }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="sub">None found.</p>
+        {% endif %}
+
+        <h2>Decision Quality by Type</h2>
+        <table>
+            <thead><tr><th>Type</th><th>Count</th><th>Avg decision value</th><th>Optimal count</th></tr></thead>
+            <tbody>
+                {% for q in quality_by_type %}
+                <tr>
+                    <td>{{ q.decision_type }}</td>
+                    <td>{{ q.n }}</td>
+                    <td>{{ q.avg_dv }}</td>
+                    <td>{{ q.n_optimal }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Recent High-Impact Decisions</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Game</th>
+                    <th>Type</th>
+                    <th>Manager</th>
+                    <th>Δ WPA</th>
+                    <th>Optimal?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in high_impact %}
+                <tr>
+                    <td>{{ d.game_date }}</td>
+                    <td><a href="/games/{{ d.game_id | pathquote }}">{{ d.away_team }} @ {{ d.home_team }}</a></td>
+                    <td>{{ d.decision_type }}</td>
+                    <td>
+                        {% if d.manager_name %}
+                        <a href="/managers/{{ d.manager_name | pathquote }}">{{ d.manager_name }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ "%.4f"|format(d.decision_value) if d.decision_value is not none else '—' }}</td>
+                    <td>{{ 'yes' if d.is_optimal else ('no' if d.is_optimal is not none else '—') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

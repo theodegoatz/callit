@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ manager.name }} — CallIt</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --accent: #4f8cff;
+            --text: #e1e4ea;
+            --muted: #8892a4;
+            --border: #2a2e3a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+        h1 { color: var(--accent); font-size: 1.4rem; }
+        .meta { color: var(--muted); margin: 0.5rem 0 1rem; }
+        .stats { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .stats span { background: var(--card); border: 1px solid var(--border); padding: 0.5rem 0.85rem; border-radius: 8px; font-size: 0.9rem; }
+        a { color: var(--accent); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 0.88rem;
+        }
+        th, td { padding: 0.5rem 0.65rem; text-align: left; }
+        th { background: var(--border); color: var(--muted); font-size: 0.72rem; text-transform: uppercase; }
+        tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ manager.name }}</h1>
+        <p class="meta">
+            {{ manager.team }} · Season {{ season }} ·
+            <a href="/">Dashboard</a>
+        </p>
+        <div class="stats">
+            <span>Decisions: {{ manager.total_decisions }}</span>
+            <span>Optimal: {{ manager.optimal_decisions }}</span>
+            <span>Grade: {{ manager.grade or '—' }}</span>
+            <span>Score: {{ "%.1f"|format(manager.score) if manager.score is not none else '—' }}</span>
+        </div>
+        <h2 style="color:var(--accent);font-size:1rem;margin-bottom:0.5rem;">Recent decisions</h2>
+        {% if recent_decisions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Game</th>
+                    <th>Inn</th>
+                    <th>Type</th>
+                    <th>Δ WPA</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in recent_decisions %}
+                <tr>
+                    <td>{{ d.game_date }}</td>
+                    <td><a href="/games/{{ d.game_id | pathquote }}">{{ d.away_team }} @ {{ d.home_team }}</a></td>
+                    <td>{{ d.half }} {{ d.inning }}</td>
+                    <td>{{ d.decision_type }}</td>
+                    <td>{{ "%.3f"|format(d.decision_value) if d.decision_value is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="meta">No decisions found for this season.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

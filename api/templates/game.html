@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game {{ game.game_id }} — CallIt</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d27;
+            --accent: #4f8cff;
+            --text: #e1e4ea;
+            --muted: #8892a4;
+            --border: #2a2e3a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+        header { margin-bottom: 1.5rem; }
+        h1 { color: var(--accent); font-size: 1.4rem; }
+        .meta { color: var(--muted); margin-top: 0.35rem; }
+        a { color: var(--accent); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 0.88rem;
+        }
+        th, td { padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+        th { background: var(--border); color: var(--muted); font-size: 0.72rem; text-transform: uppercase; }
+        tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{{ game.away_team }} @ {{ game.home_team }}</h1>
+            <p class="meta">
+                {{ game.game_date }} · Season {{ game.season }} ·
+                Score {{ game.away_score if game.away_score is not none else '—' }}–{{ game.home_score if game.home_score is not none else '—' }}
+                · <a href="/">Dashboard</a>
+            </p>
+        </header>
+        <h2 style="color:var(--accent);font-size:1rem;margin-bottom:0.5rem;">Decision moments</h2>
+        {% if decisions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Inn</th>
+                    <th>Type</th>
+                    <th>Manager</th>
+                    <th>Description</th>
+                    <th>Δ WPA</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in decisions %}
+                <tr>
+                    <td>{{ d.half }} {{ d.inning }}</td>
+                    <td>{{ d.decision_type }}</td>
+                    <td>
+                        {% if d.manager_name %}
+                        <a href="/managers/{{ d.manager_name | pathquote }}">{{ d.manager_name }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ d.description or '—' }}</td>
+                    <td>{{ "%.3f"|format(d.decision_value) if d.decision_value is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="meta">No decision moments for this game.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
