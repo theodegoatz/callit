@@ -219,7 +219,7 @@ def game_scorecard(request: Request, game_id: str):
         decisions = conn.execute(
             text(
                 "SELECT * FROM decision_moments WHERE game_id = :gid "
-                "ORDER BY inning, half, id"
+                "ORDER BY inning, half DESC, id"
             ),
             {"gid": game_id},
         ).mappings().all()
