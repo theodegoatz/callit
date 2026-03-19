@@ -55,7 +55,8 @@ def dashboard(request: Request):
 
         recent_games = conn.execute(
             text(
-                "SELECT game_id, game_date, home_team, away_team, home_score, away_score "
+                "SELECT game_id, game_date, home_team, away_team, home_score, away_score, "
+                "data_source "
                 "FROM games ORDER BY game_date DESC NULLS LAST, game_id DESC LIMIT 12"
             )
         ).mappings().all()
@@ -106,7 +107,11 @@ def _fetch_admin_rows(conn):
             "AS dm_null_optimal, "
             "(SELECT COUNT(*) FROM games g WHERE NOT EXISTS "
             "(SELECT 1 FROM decision_moments dm WHERE dm.game_id = g.game_id)) "
-            "AS games_no_decisions"
+            "AS games_no_decisions, "
+            "(SELECT COUNT(*) FROM games WHERE data_source = 'sample') "
+            "AS games_sample_source, "
+            "(SELECT COUNT(*) FROM games WHERE data_source IS NULL OR data_source = 'legacy') "
+            "AS games_legacy_source"
         )
     ).mappings().first()
 
@@ -194,7 +199,7 @@ def list_games(
         rows = conn.execute(
             text(
                 f"SELECT game_id, game_date, home_team, away_team, "
-                f"home_score, away_score, season, venue, winning_team "
+                f"home_score, away_score, season, venue, winning_team, data_source "
                 f"FROM games {where} "
                 f"ORDER BY game_date DESC NULLS LAST, game_id DESC "
                 f"LIMIT :limit"
