@@ -7,6 +7,28 @@ from pipeline.db import get_engine, ensure_schema
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 
+def _detect_schedule_kind(df: pd.DataFrame) -> str:
+    """
+    Choose parser for schedule parquet. MLB-normalized rows include game_pk; pybaseball
+    uses Tm/Opp; synthetic sample uses home_team + game_id without game_pk.
+    """
+    cols = set(df.columns)
+    if "game_pk" in cols and df["game_pk"].notna().any():
+        return "mlb_api"
+    if "Tm" in cols and "Opp" in cols:
+        return "pybaseball"
+    if "data_source" in cols:
+        srcs = df["data_source"].dropna().astype(str).unique()
+        if len(srcs) == 1 and srcs[0] == "sample":
+            return "sample"
+    if "home_team" in cols and "game_id" in cols:
+        return "sample"
+    raise KeyError(
+        "Unrecognized schedule format. Columns: "
+        f"{list(df.columns)}. Re-run ingest or use MLB-normalized / pybaseball output."
+    )
+
+
 def load_games(season: int = 2024):
     engine = get_engine()
     ensure_schema(engine)
@@ -20,12 +42,15 @@ def load_games(season: int = 2024):
     df = pd.read_parquet(parquet)
     print(f"[games] Loaded {len(df)} rows from {parquet}")
 
-    if "game_id" in df.columns:
-        games = _process_sample_format(df, season)
-    elif "Tm" in df.columns and "Opp" in df.columns:
+    kind = _detect_schedule_kind(df)
+    if kind == "mlb_api":
+        games = _process_mlb_normalized(df, season)
+    elif kind == "pybaseball":
         games = _process_pybaseball_format(df, season)
+    elif kind == "sample":
+        games = _process_sample_format(df, season)
     else:
-        raise KeyError(f"Unrecognized format. Columns: {list(df.columns)}")
+        raise KeyError(f"Unknown schedule kind {kind!r}")
 
     games = games.drop_duplicates(subset=["game_id"])
     print(f"[games] {len(games)} unique games after dedup")
@@ -51,6 +76,33 @@ def load_games(season: int = 2024):
     print(f"[games] Inserted {len(games)} games for season {season}")
 
 
+def _process_mlb_normalized(df, season):
+    """Parquet from pipeline.mlb_schedule / MLB Stats API."""
+    records = []
+    for _, row in df.iterrows():
+        gd = row["game_date"]
+        if hasattr(gd, "date"):
+            gd = gd.date()
+        records.append({
+            "game_id": str(row["game_id"]),
+            "game_date": gd,
+            "home_team": str(row["home_team"]),
+            "away_team": str(row["away_team"]),
+            "home_score": int(row["home_score"]),
+            "away_score": int(row["away_score"]),
+            "season": int(row.get("season", season)),
+            "venue": (None if pd.isna(row.get("venue")) else str(row["venue"])),
+            "winning_team": (
+                None if pd.isna(row.get("winning_team")) else str(row["winning_team"])
+            ),
+            "losing_team": (
+                None if pd.isna(row.get("losing_team")) else str(row["losing_team"])
+            ),
+            "data_source": str(row.get("data_source", "mlb_api")),
+        })
+    return pd.DataFrame(records)
+
+
 def _process_pybaseball_format(df, season):
     """Process real pybaseball schedule_and_record output."""
     records = []
@@ -59,9 +111,11 @@ def _process_pybaseball_format(df, season):
     for _, row in df.iterrows():
         tm = str(row.get("Tm", row.get("team", "")))
         opp = str(row.get("Opp", ""))
+        if opp in ("nan", "Opp", ""):
+            continue
         is_away = str(row.get("Unnamed: 4", "")).strip() == "@"
-        runs = int(row.get("R", 0))
-        runs_against = int(row.get("RA", 0))
+        runs = int(row.get("R", 0) or 0)
+        runs_against = int(row.get("RA", 0) or 0)
 
         if is_away:
             home_team, away_team = opp, tm
@@ -81,8 +135,11 @@ def _process_pybaseball_format(df, season):
 
         game_id = f"{season}_{game_date}_{home_team}_{away_team}"
 
-        winning_team = home_team if home_score > away_score else away_team
-        losing_team = away_team if home_score > away_score else home_team
+        if home_score == away_score:
+            winning_team, losing_team = None, None
+        else:
+            winning_team = home_team if home_score > away_score else away_team
+            losing_team = away_team if home_score > away_score else home_team
 
         records.append({
             "game_id": game_id,
@@ -92,15 +149,17 @@ def _process_pybaseball_format(df, season):
             "home_score": home_score,
             "away_score": away_score,
             "season": season,
+            "venue": None,
             "winning_team": winning_team,
             "losing_team": losing_team,
+            "data_source": "pybaseball",
         })
 
     return pd.DataFrame(records)
 
 
 def _process_sample_format(df, season):
-    """Process sample/generated data format."""
+    """Process sample/generated data format (random matchups)."""
     col_map = {}
     for col in df.columns:
         low = col.lower().replace(" ", "_")
@@ -131,10 +190,14 @@ def _process_sample_format(df, season):
         lambda r: r["away_team"] if r["home_score"] > r["away_score"] else r["home_team"],
         axis=1,
     )
+    df["venue"] = None
+    if "data_source" not in df.columns:
+        df["data_source"] = "sample"
 
     keep = [
         "game_id", "game_date", "home_team", "away_team",
-        "home_score", "away_score", "season", "winning_team", "losing_team",
+        "home_score", "away_score", "season", "venue",
+        "winning_team", "losing_team", "data_source",
     ]
     return df[[c for c in keep if c in df.columns]]
 

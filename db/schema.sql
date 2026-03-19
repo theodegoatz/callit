@@ -11,8 +11,11 @@ CREATE TABLE IF NOT EXISTS games (
     venue          TEXT,
     winning_team   TEXT,
     losing_team    TEXT,
+    data_source    TEXT,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE games ADD COLUMN IF NOT EXISTS data_source TEXT;
 
 CREATE TABLE IF NOT EXISTS decision_moments (
     id              SERIAL PRIMARY KEY,
