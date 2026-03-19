@@ -47,12 +47,19 @@
         }
         .stat-card .value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
         .stat-card .label { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; }
+        h2.section-title {
+            font-size: 1.15rem;
+            color: var(--accent);
+            margin: 2rem 0 0.75rem;
+            font-weight: 600;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
             background: var(--card);
             border-radius: 10px;
             overflow: hidden;
+            margin-bottom: 0.5rem;
         }
         th, td { padding: 0.75rem 1rem; text-align: left; }
         th {
@@ -63,6 +70,8 @@
             color: var(--muted);
         }
         tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
         .grade {
             display: inline-block;
             width: 2.2rem;
@@ -84,6 +93,7 @@
             overflow: hidden;
         }
         .score-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+        .muted { color: var(--muted); font-size: 0.85rem; }
         footer {
             text-align: center;
             margin-top: 2rem;
@@ -114,6 +124,9 @@
                 <div class="label">Managers Graded</div>
             </div>
         </div>
+
+        <h2 class="section-title">Manager Rankings</h2>
+        <p class="muted" style="margin-bottom:0.75rem;">Ranked managers have at least 50 scored decisions (grade is not null).</p>
         <table>
             <thead>
                 <tr>
@@ -130,7 +143,7 @@
                 {% for m in managers %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td>{{ m.name }}</td>
+                    <td><a href="/managers/{{ m.name | pathquote }}">{{ m.name }}</a></td>
                     <td>{{ m.team }}</td>
                     <td>{{ m.total_decisions }}</td>
                     <td>{{ m.optimal_decisions }}</td>
@@ -158,6 +171,59 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <h2 class="section-title">Recent Games</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Matchup</th>
+                    <th>Score</th>
+                    <th>Scorecard</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in recent_games %}
+                <tr>
+                    <td>{{ g.game_date }}</td>
+                    <td>{{ g.away_team }} @ {{ g.home_team }}</td>
+                    <td>{{ g.away_score if g.away_score is not none else '—' }} – {{ g.home_score if g.home_score is not none else '—' }}</td>
+                    <td><a href="/games/{{ g.game_id | pathquote }}">Open</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="section-title">Recent Decision Moments</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Game</th>
+                    <th>Type</th>
+                    <th>Manager</th>
+                    <th>Δ WPA</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in recent_decisions %}
+                <tr>
+                    <td>{{ d.game_date }}</td>
+                    <td><a href="/games/{{ d.game_id | pathquote }}">{{ d.away_team }} @ {{ d.home_team }}</a></td>
+                    <td>{{ d.decision_type }}</td>
+                    <td>
+                        {% if d.manager_name %}
+                        <a href="/managers/{{ d.manager_name | pathquote }}">{{ d.manager_name }}</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>{{ "%.3f"|format(d.decision_value) if d.decision_value is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
         <footer>
             <p>CallIt &mdash; Scoring MLB manager decisions using WPA/EPA models</p>
         </footer>
