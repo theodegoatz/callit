@@ -23,6 +23,15 @@ python3 scripts/verify_schedule.py --season 2024
 python3 -c "from pipeline.games import load_games; load_games(2024)"
 ```
 
+## One-shot: fill Supabase for localhost testing
+
+With a working `DATABASE_URL` in `.env` (Session pooler URI + database password):
+
+```bash
+python3 scripts/setup_supabase_demo.py --season 2024 --force-schedule
+uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
 ## Verification
 
 ```bash
