@@ -23,3 +23,9 @@ the decision is AMBIGUOUS and should not be scored.
 
 ## Database Schema (paste full CREATE TABLE statements here as you add them)
 
+### games.data_source
+- `mlb_api` — Stats API ingest (`{season}_{gamePk}` ids)
+- `pybaseball` — BR/pybaseball schedule rows (legacy-style `game_id`)
+- `sample` — `USE_SAMPLE_SCHEDULE=true` synthetic data (random matchups)
+- `NULL` / `legacy` — rows predating this column (admin dashboard flags these)
+

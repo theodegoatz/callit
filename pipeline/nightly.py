@@ -18,7 +18,7 @@ def run_step(label, func, *args, **kwargs):
 
 
 def main(season: int = 2024):
-    from pipeline.ingest import main as ingest
+    from pipeline.ingest import download_schedule
     from pipeline.games import load_games
     from pipeline.extract import extract_decisions
     from pipeline.load_managers import load_managers
@@ -29,7 +29,7 @@ def main(season: int = 2024):
     from pipeline.validate import validate
 
     steps = [
-        ("Ingest raw data", ingest),
+        ("Ingest raw data", lambda: download_schedule(season)),
         ("Load games", lambda: load_games(season)),
         ("Extract decision moments", lambda: extract_decisions(season)),
         ("Load managers", lambda: load_managers(season)),
