@@ -69,6 +69,12 @@ def extract_decisions(season: int = 2024):
 
     df = pd.DataFrame(decisions)
 
+    ctx_cast = (
+        "CAST(:context AS TEXT)"
+        if engine.dialect.name == "sqlite"
+        else "CAST(:context AS JSONB)"
+    )
+
     with engine.begin() as conn:
         conn.execute(
             text(
@@ -87,7 +93,7 @@ def extract_decisions(season: int = 2024):
                     "(game_id, inning, half, decision_type, team, description, "
                     " wpa_actual, context) "
                     "VALUES (:game_id, :inning, :half, :decision_type, :team, "
-                    " :description, :wpa_actual, CAST(:context AS JSONB))"
+                    f" :description, :wpa_actual, {ctx_cast})"
                 ),
                 rows,
             )

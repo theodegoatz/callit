@@ -2,7 +2,8 @@
 """
 One-shot: ensure schema, ingest MLB schedule, load games, decisions, managers.
 
-Run on your machine (not in a restricted agent VM) with a valid DATABASE_URL in .env:
+Run on your machine (not in a restricted agent VM) with a valid DATABASE_URL in .env
+(or unset DATABASE_URL / set CALLIT_USE_SQLITE=1 to use SQLite at data/callit_local.db):
 
   python3 scripts/setup_supabase_demo.py --season 2024
 
