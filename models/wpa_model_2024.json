@@ -1,36 +1,63 @@
 {
+  "model_type": "ridge_wpa",
   "season": 2024,
-  "n_decisions": 12502,
-  "features": [
+  "n_decisions": 500,
+  "numeric_features": [
     "inning",
     "leverage",
     "run_diff",
     "late_inning"
   ],
+  "dummy_columns": [
+    "dt_defensive_substitution",
+    "dt_intentional_walk",
+    "dt_mound_visit",
+    "dt_offensive_substitution",
+    "dt_pinch_hitter",
+    "dt_pitching_change",
+    "dt_sacrifice_bunt"
+  ],
+  "feature_names": [
+    "inning",
+    "leverage",
+    "run_diff",
+    "late_inning",
+    "dt_defensive_substitution",
+    "dt_intentional_walk",
+    "dt_mound_visit",
+    "dt_offensive_substitution",
+    "dt_pinch_hitter",
+    "dt_pitching_change",
+    "dt_sacrifice_bunt"
+  ],
   "scaler_mean": [
-    5.006558950567909,
-    1.5721348584226524,
-    2.96872500399936,
-    0.335946248600224
+    5.0,
+    1.5096288315227095,
+    3.534,
+    0.316
   ],
   "scaler_scale": [
-    2.5799868139528632,
-    0.48001014165590417,
-    2.381351377815454,
-    0.47232019504956646
+    2.51555162936482,
+    0.4198399054659961,
+    2.3110266117031193,
+    0.4649128950674523
   ],
   "coef": [
-    [
-      0.009184831065420295,
-      0.06559168588323767,
-      0.031450767536338145,
-      -0.04645714947317794
-    ]
+    -0.0012136091627905736,
+    0.008678250533592074,
+    -0.011657249197090602,
+    0.001729411715386502,
+    0.005882209692071081,
+    -0.0015562025369990986,
+    0.0008047002687080776,
+    -0.0033111840394797966,
+    -0.00713584730951111,
+    0.0026684862068058718,
+    0.0026478377184043257
   ],
-  "intercept": [
-    -0.026031551437523014
-  ],
-  "wpa_mean": -0.0005716805311150215,
-  "wpa_std": 0.06623606046327371,
-  "optimal_baseline": 0.06992000000000001
+  "intercept": 0.004979288008504812,
+  "wpa_mean": 0.0048472,
+  "wpa_std": 0.04257694400682134,
+  "train_rmse": 0.03982065066634013,
+  "optimal_baseline": 0.0511525
 }
