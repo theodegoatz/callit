@@ -1,12 +1,35 @@
-"""FastAPI smoke tests; skipped when DATABASE_URL is unset."""
-import os
-
+"""FastAPI smoke tests; skipped when the configured database is unreachable."""
 import pytest
+from sqlalchemy import create_engine, text
 
-pytestmark = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL"),
-    reason="DATABASE_URL not set — skip DB-backed API tests",
-)
+from pipeline.db import DATABASE_URL, _connect_args
+
+
+def _database_reachable() -> bool:
+    try:
+        if str(DATABASE_URL).startswith("sqlite"):
+            eng = create_engine(
+                DATABASE_URL,
+                connect_args={"check_same_thread": False},
+                pool_pre_ping=True,
+            )
+        else:
+            eng = create_engine(
+                DATABASE_URL,
+                connect_args=_connect_args(DATABASE_URL),
+                pool_pre_ping=True,
+            )
+        with eng.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+_skip = not _database_reachable()
+_reason = "Database unreachable (check DATABASE_URL or local SQLite at data/callit_local.db)"
+
+pytestmark = pytest.mark.skipif(_skip, reason=_reason)
 
 
 def test_health_ok():

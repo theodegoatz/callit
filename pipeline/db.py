@@ -27,7 +27,33 @@ def _database_url_from_env_file():
 
 load_dotenv()
 
-_DEFAULT_URL = "postgresql://postgres:postgres@localhost:5432/callit"
+_LOCAL_SQLITE = _REPO_ROOT / "data" / "callit_local.db"
+# When DATABASE_URL is unset (no env, no .env entry), use a file SQLite DB so
+# `uvicorn api.main:app` works on localhost without installing Postgres.
+_DEFAULT_SQLITE_URL = f"sqlite:///{_LOCAL_SQLITE.resolve().as_posix()}"
+
+
+def _raw_database_url() -> str | None:
+    if os.getenv("CALLIT_USE_SQLITE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        return None
+
+    from_file = _database_url_from_env_file()
+    for candidate in (from_file, os.getenv("DATABASE_URL")):
+        if not candidate or not str(candidate).strip():
+            continue
+        url = str(candidate).strip().strip('"').strip("'")
+        if not url:
+            continue
+        # Copied-from-example placeholder — use local SQLite instead
+        if "[YOUR-PASSWORD]" in url or "[PASSWORD]" in url:
+            continue
+        return url
+    return None
 
 
 def resolve_database_url(raw: str) -> str:
@@ -57,10 +83,12 @@ def resolve_database_url(raw: str) -> str:
     return raw
 
 
-_raw_database_url = _database_url_from_env_file() or os.getenv(
-    "DATABASE_URL", _DEFAULT_URL
-)
-DATABASE_URL = resolve_database_url(_raw_database_url)
+_resolved_raw = _raw_database_url()
+if _resolved_raw is None:
+    _LOCAL_SQLITE.parent.mkdir(parents=True, exist_ok=True)
+    DATABASE_URL = _DEFAULT_SQLITE_URL
+else:
+    DATABASE_URL = resolve_database_url(_resolved_raw)
 
 _engine = None
 
@@ -77,17 +105,31 @@ def _connect_args(url: str):
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_engine(
-            DATABASE_URL,
-            connect_args=_connect_args(DATABASE_URL),
-            pool_pre_ping=True,
-        )
+        url = DATABASE_URL
+        if str(url).startswith("sqlite"):
+            _engine = create_engine(
+                url,
+                connect_args={"check_same_thread": False},
+                pool_pre_ping=True,
+            )
+        else:
+            _engine = create_engine(
+                url,
+                connect_args=_connect_args(url),
+                pool_pre_ping=True,
+            )
     return _engine
 
 
 def ensure_schema(engine):
-    schema_path = os.path.join(os.path.dirname(__file__), "..", "db", "schema.sql")
-    schema_path = os.path.normpath(schema_path)
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        name = "schema_sqlite.sql"
+    else:
+        name = "schema.sql"
+    schema_path = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "db", name)
+    )
     if os.path.exists(schema_path):
         with open(schema_path) as f:
             sql = f.read()
@@ -96,4 +138,4 @@ def ensure_schema(engine):
                 stmt = stmt.strip()
                 if stmt:
                     conn.execute(text(stmt))
-    print("[db] schema ensured")
+    print(f"[db] schema ensured ({dialect})")

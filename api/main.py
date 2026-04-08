@@ -86,7 +86,8 @@ def dashboard(request: Request):
 
 
 def _fetch_admin_rows(conn):
-    conn.execute(text("SET LOCAL statement_timeout = '10s'"))
+    if conn.engine.dialect.name == "postgresql":
+        conn.execute(text("SET LOCAL statement_timeout = '10s'"))
 
     health = conn.execute(
         text(
@@ -124,10 +125,14 @@ def _fetch_admin_rows(conn):
         )
     ).mappings().all()
 
+    if conn.engine.dialect.name == "sqlite":
+        avg_expr = "ROUND(AVG(decision_value), 4)"
+    else:
+        avg_expr = "ROUND(AVG(decision_value)::numeric, 4)"
     quality_by_type = conn.execute(
         text(
             "SELECT decision_type, COUNT(*) AS n, "
-            "ROUND(AVG(decision_value)::numeric, 4) AS avg_dv, "
+            f"{avg_expr} AS avg_dv, "
             "SUM(CASE WHEN is_optimal THEN 1 ELSE 0 END) AS n_optimal "
             "FROM decision_moments "
             "GROUP BY decision_type "
