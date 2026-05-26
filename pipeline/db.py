@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import dotenv_values, load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.pool import NullPool
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ENV_FILE = _REPO_ROOT / ".env"
@@ -57,6 +58,15 @@ def _raw_database_url() -> str | None:
     return None
 
 
+def _apply_pooler_host_override(raw: str) -> str:
+    override = os.getenv("SUPABASE_POOLER_HOST", "").strip()
+    if not override:
+        return raw
+    u = make_url(raw)
+    port = u.port or 5432
+    return str(u.set(host=override, port=port))
+
+
 def resolve_database_url(raw: str) -> str:
     """
     Supabase direct host (db.<ref>.supabase.co) often resolves to IPv6 only.
@@ -97,7 +107,7 @@ if _resolved_raw is None:
         _LOCAL_SQLITE.parent.mkdir(parents=True, exist_ok=True)
         DATABASE_URL = _DEFAULT_SQLITE_URL
 else:
-    DATABASE_URL = resolve_database_url(_resolved_raw)
+    DATABASE_URL = _apply_pooler_host_override(resolve_database_url(_resolved_raw))
 
 _engine = None
 
@@ -109,6 +119,16 @@ def _connect_args(url: str):
     if "supabase" in host:
         args["sslmode"] = "require"
     return args
+
+
+def _engine_kwargs(url: str) -> dict:
+    kwargs: dict = {
+        "connect_args": _connect_args(url),
+        "pool_pre_ping": True,
+    }
+    if _running_on_vercel():
+        kwargs["poolclass"] = NullPool
+    return kwargs
 
 
 def get_engine():
@@ -127,12 +147,21 @@ def get_engine():
                 pool_pre_ping=True,
             )
         else:
-            _engine = create_engine(
-                url,
-                connect_args=_connect_args(url),
-                pool_pre_ping=True,
-            )
+            _engine = create_engine(url, **_engine_kwargs(url))
     return _engine
+
+
+def format_db_error(exc: BaseException) -> str:
+    msg = str(exc).strip()
+    if "Tenant or user not found" in msg or "tenant/user" in msg.lower():
+        return (
+            "Supabase pooler rejected this connection (tenant/user not found). "
+            "Copy the exact Session pooler URI from your Supabase dashboard — "
+            "do not guess the aws-0/aws-1 hostname or region."
+        )
+    if "password authentication failed" in msg.lower():
+        return "Database password rejected. Reset the DB password in Supabase and update DATABASE_URL."
+    return msg or exc.__class__.__name__
 
 
 def _sql_chunk_executable(chunk: str) -> bool:

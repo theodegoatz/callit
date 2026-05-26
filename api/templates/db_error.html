@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CallIt — Database unavailable</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { background: #f4f4f5; padding: 0.1rem 0.35rem; border-radius: 4px; }
+    .detail { color: #52525b; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>Database connection failed</h1>
+  <p class="detail">{{ message }}</p>
+  <h2>Fix</h2>
+  <ol>
+    <li>Open <strong>Supabase → Project Settings → Database → Connection string</strong>.</li>
+    <li>Copy the <strong>Session pooler</strong> URI (not a guessed <code>aws-0-…</code> host).</li>
+    <li>Set <code>DATABASE_URL</code> in <strong>Vercel → Environment Variables</strong> (and local <code>.env</code>).</li>
+    <li>Do <strong>not</strong> set <code>CALLIT_USE_SQLITE=1</code> on Vercel.</li>
+    <li>Redeploy, then check <a href="/health">/health</a>.</li>
+  </ol>
+</body>
+</html>

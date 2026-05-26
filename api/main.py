@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
-from pipeline.db import get_engine, ensure_schema
+from pipeline.db import format_db_error, get_engine, ensure_schema
 
 app = FastAPI(title="CallIt Analytics API", version="1.0.0")
 
@@ -40,44 +40,59 @@ def startup():
         print(f"[startup] database init skipped or failed: {exc}")
 
 
+def _db_error_page(request: Request, exc: Exception) -> HTMLResponse:
+    return templates.TemplateResponse(
+        "db_error.html",
+        {"request": request, "message": format_db_error(exc)},
+        status_code=503,
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    engine = get_engine()
-    with engine.connect() as conn:
-        managers = conn.execute(
-            text(
-                "SELECT name, team, season, total_decisions, optimal_decisions, "
-                "grade, score FROM managers WHERE grade IS NOT NULL "
-                "ORDER BY score DESC"
-            )
-        ).mappings().all()
+    try:
+        engine = get_engine()
+    except Exception as exc:
+        return _db_error_page(request, exc)
 
-        summary = conn.execute(
-            text("SELECT COUNT(*) as n_games FROM games")
-        ).mappings().first()
+    try:
+        with engine.connect() as conn:
+            managers = conn.execute(
+                text(
+                    "SELECT name, team, season, total_decisions, optimal_decisions, "
+                    "grade, score FROM managers WHERE grade IS NOT NULL "
+                    "ORDER BY score DESC"
+                )
+            ).mappings().all()
 
-        dm_count = conn.execute(
-            text("SELECT COUNT(*) as n FROM decision_moments")
-        ).scalar()
+            summary = conn.execute(
+                text("SELECT COUNT(*) as n_games FROM games")
+            ).mappings().first()
 
-        recent_games = conn.execute(
-            text(
-                "SELECT game_id, game_date, home_team, away_team, home_score, away_score, "
-                "data_source "
-                "FROM games ORDER BY game_date DESC NULLS LAST, game_id DESC LIMIT 12"
-            )
-        ).mappings().all()
+            dm_count = conn.execute(
+                text("SELECT COUNT(*) as n FROM decision_moments")
+            ).scalar()
 
-        recent_decisions = conn.execute(
-            text(
-                "SELECT dm.id, dm.game_id, dm.decision_type, dm.manager_name, "
-                "dm.team, dm.description, dm.decision_value, dm.is_optimal, "
-                "g.game_date, g.home_team, g.away_team "
-                "FROM decision_moments dm "
-                "JOIN games g ON dm.game_id = g.game_id "
-                "ORDER BY g.game_date DESC NULLS LAST, dm.id DESC LIMIT 15"
-            )
-        ).mappings().all()
+            recent_games = conn.execute(
+                text(
+                    "SELECT game_id, game_date, home_team, away_team, home_score, away_score, "
+                    "data_source "
+                    "FROM games ORDER BY game_date DESC NULLS LAST, game_id DESC LIMIT 12"
+                )
+            ).mappings().all()
+
+            recent_decisions = conn.execute(
+                text(
+                    "SELECT dm.id, dm.game_id, dm.decision_type, dm.manager_name, "
+                    "dm.team, dm.description, dm.decision_value, dm.is_optimal, "
+                    "g.game_date, g.home_team, g.away_team "
+                    "FROM decision_moments dm "
+                    "JOIN games g ON dm.game_id = g.game_id "
+                    "ORDER BY g.game_date DESC NULLS LAST, dm.id DESC LIMIT 15"
+                )
+            ).mappings().all()
+    except Exception as exc:
+        return _db_error_page(request, exc)
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -423,8 +438,11 @@ def health():
             status_code=503,
             content={
                 "status": "error",
-                "detail": str(exc),
-                "hint": "Set DATABASE_URL in Vercel Environment Variables.",
+                "detail": format_db_error(exc),
+                "hint": (
+                    "Copy Session pooler URI from Supabase → Database → "
+                    "Connection string into Vercel DATABASE_URL."
+                ),
             },
         )
 
