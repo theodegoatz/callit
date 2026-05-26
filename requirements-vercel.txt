@@ -1,0 +1,8 @@
+# Minimal deps for Vercel serverless (FastAPI dashboard API only).
+# Full ML/pipeline stack: use requirements.txt locally or Railway/Render.
+fastapi==0.115.8
+uvicorn[standard]==0.34.0
+jinja2==3.1.6
+SQLAlchemy==2.0.48
+psycopg2-binary==2.9.11
+python-dotenv==1.2.2

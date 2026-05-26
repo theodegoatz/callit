@@ -1,0 +1,41 @@
+# Keep Lambda bundle under 500 MB — exclude local/heavy paths from upload
+venv/
+.venv/
+env/
+data/
+.pytest_cache/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+
+# Frontend (deploy separately with Root Directory = frontend, or not on Vercel)
+frontend/node_modules/
+frontend/.next/
+
+# Pipeline / ML (not needed at API runtime; api only imports pipeline.db)
+pipeline/ingest.py
+pipeline/extract.py
+pipeline/games.py
+pipeline/build_model.py
+pipeline/score_all.py
+pipeline/nightly.py
+pipeline/mlb_schedule.py
+pipeline/mlb_win_probability.py
+pipeline/load_managers.py
+pipeline/manager.py
+pipeline/manager_grades.py
+pipeline/validate.py
+pipeline/labels.py
+pipeline/features.py
+pipeline/model_inference.py
+pipeline/pbp_ingest.py
+pipeline/detect_decisions.py
+pipeline/eval_model.py
+
+# Tests and scripts
+tests/
+scripts/
+
+# Large model artifacts (optional; API does not load these at runtime)
+models/

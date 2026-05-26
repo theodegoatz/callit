@@ -3,6 +3,11 @@ venv/
 .venv/
 env/
 
+# Frontend (local Next.js; do not commit)
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
 # Environment variables (secrets)
 .env
 .env.local

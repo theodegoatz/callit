@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pip install -r requirements-vercel.txt",
+  "functions": {
+    "api/**/*.py": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "excludeFiles": "{venv/**,.venv/**,data/**,tests/**,scripts/**,models/**,frontend/**,**/__pycache__/**,**/.pytest_cache/**,pipeline/ingest.py,pipeline/extract.py,pipeline/games.py,pipeline/build_model.py,pipeline/score_all.py,pipeline/nightly.py,pipeline/mlb_schedule.py,pipeline/mlb_win_probability.py,pipeline/load_managers.py,pipeline/manager.py,pipeline/manager_grades.py,pipeline/validate.py}"
+    }
+  }
+}
