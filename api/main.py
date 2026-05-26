@@ -29,8 +29,15 @@ _admin_cache: dict = {"t_mono": 0.0, "ctx": None}
 
 @app.on_event("startup")
 def startup():
-    engine = get_engine()
-    ensure_schema(engine)
+    from pipeline.db import should_run_ensure_schema
+
+    try:
+        engine = get_engine()
+        if should_run_ensure_schema():
+            ensure_schema(engine)
+    except Exception as exc:
+        # Log for Vercel function logs; avoid crashing import if DB misconfigured.
+        print(f"[startup] database init skipped or failed: {exc}")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -406,10 +413,20 @@ def daily_game():
 
 @app.get("/health")
 def health():
-    engine = get_engine()
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    return {"status": "ok"}
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "detail": str(exc),
+                "hint": "Set DATABASE_URL in Vercel Environment Variables.",
+            },
+        )
 
 
 def _serialize_row(row):

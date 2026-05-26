@@ -34,7 +34,8 @@ _DEFAULT_SQLITE_URL = f"sqlite:///{_LOCAL_SQLITE.resolve().as_posix()}"
 
 
 def _raw_database_url() -> str | None:
-    if os.getenv("CALLIT_USE_SQLITE", "").strip().lower() in (
+    # Local-only: on Vercel always use DATABASE_URL from project env (never SQLite).
+    if not _running_on_vercel() and os.getenv("CALLIT_USE_SQLITE", "").strip().lower() in (
         "1",
         "true",
         "yes",
@@ -42,7 +43,7 @@ def _raw_database_url() -> str | None:
     ):
         return None
 
-    from_file = _database_url_from_env_file()
+    from_file = None if _running_on_vercel() else _database_url_from_env_file()
     for candidate in (from_file, os.getenv("DATABASE_URL")):
         if not candidate or not str(candidate).strip():
             continue
@@ -83,10 +84,18 @@ def resolve_database_url(raw: str) -> str:
     return raw
 
 
+def _running_on_vercel() -> bool:
+    return bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+
+
 _resolved_raw = _raw_database_url()
 if _resolved_raw is None:
-    _LOCAL_SQLITE.parent.mkdir(parents=True, exist_ok=True)
-    DATABASE_URL = _DEFAULT_SQLITE_URL
+    if _running_on_vercel():
+        # Serverless has no writable data/ dir; require Supabase URL in project env.
+        DATABASE_URL = None
+    else:
+        _LOCAL_SQLITE.parent.mkdir(parents=True, exist_ok=True)
+        DATABASE_URL = _DEFAULT_SQLITE_URL
 else:
     DATABASE_URL = resolve_database_url(_resolved_raw)
 
@@ -105,6 +114,11 @@ def _connect_args(url: str):
 def get_engine():
     global _engine
     if _engine is None:
+        if DATABASE_URL is None:
+            raise RuntimeError(
+                "DATABASE_URL is not set. In Vercel: Project → Settings → "
+                "Environment Variables → add DATABASE_URL (Supabase pooler URI)."
+            )
         url = DATABASE_URL
         if str(url).startswith("sqlite"):
             _engine = create_engine(
@@ -119,6 +133,27 @@ def get_engine():
                 pool_pre_ping=True,
             )
     return _engine
+
+
+def _sql_chunk_executable(chunk: str) -> bool:
+    for line in chunk.splitlines():
+        s = line.strip()
+        if s and not s.startswith("--"):
+            return True
+    return False
+
+
+def should_run_ensure_schema() -> bool:
+    if _running_on_vercel():
+        return False
+    if os.getenv("CALLIT_SKIP_ENSURE_SCHEMA", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        return False
+    return True
 
 
 def ensure_schema(engine):
@@ -136,6 +171,6 @@ def ensure_schema(engine):
         with engine.begin() as conn:
             for stmt in sql.split(";"):
                 stmt = stmt.strip()
-                if stmt:
+                if stmt and _sql_chunk_executable(stmt):
                     conn.execute(text(stmt))
     print(f"[db] schema ensured ({dialect})")
