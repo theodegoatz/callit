@@ -1,7 +1,7 @@
 {
   "model_type": "ridge_wpa",
   "season": 2024,
-  "n_decisions": 500,
+  "n_decisions": 15121,
   "numeric_features": [
     "inning",
     "leverage",
@@ -9,55 +9,58 @@
     "late_inning"
   ],
   "dummy_columns": [
-    "dt_defensive_substitution",
+    "dt_defensive_shift",
     "dt_intentional_walk",
     "dt_mound_visit",
-    "dt_offensive_substitution",
     "dt_pinch_hitter",
     "dt_pitching_change",
-    "dt_sacrifice_bunt"
+    "dt_pitchout",
+    "dt_sacrifice_bunt",
+    "dt_stolen_base"
   ],
   "feature_names": [
     "inning",
     "leverage",
     "run_diff",
     "late_inning",
-    "dt_defensive_substitution",
+    "dt_defensive_shift",
     "dt_intentional_walk",
     "dt_mound_visit",
-    "dt_offensive_substitution",
     "dt_pinch_hitter",
     "dt_pitching_change",
-    "dt_sacrifice_bunt"
+    "dt_pitchout",
+    "dt_sacrifice_bunt",
+    "dt_stolen_base"
   ],
   "scaler_mean": [
-    5.0,
-    1.5096288315227095,
-    3.534,
-    0.316
+    4.99675947357979,
+    1.518322200912638,
+    3.599431254546657,
+    0.33126115997619204
   ],
   "scaler_scale": [
-    2.51555162936482,
-    0.4198399054659961,
-    2.3110266117031193,
-    0.4649128950674523
+    2.567401585973165,
+    0.4777946227098563,
+    2.789850414191032,
+    0.4706667652038115
   ],
   "coef": [
-    -0.0012136091627905736,
-    0.008678250533592074,
-    -0.011657249197090602,
-    0.001729411715386502,
-    0.005882209692071081,
-    -0.0015562025369990986,
-    0.0008047002687080776,
-    -0.0033111840394797966,
-    -0.00713584730951111,
-    0.0026684862068058718,
-    0.0026478377184043257
+    -0.0006193821575143523,
+    -0.00036750284567246025,
+    -0.0002920889418748364,
+    0.0013991251686885891,
+    0.0018486746726595732,
+    -0.00013312765436362717,
+    0.0006899315673530549,
+    -0.0006077652009308558,
+    0.001079898911161303,
+    -0.00019800443234973544,
+    -0.002555556496913841,
+    -0.00012405136658254418
   ],
-  "intercept": 0.004979288008504812,
-  "wpa_mean": 0.0048472,
-  "wpa_std": 0.04257694400682134,
-  "train_rmse": 0.03982065066634013,
-  "optimal_baseline": 0.0511525
+  "intercept": 2.6490139090127246e-05,
+  "wpa_mean": 0.00013577342768335415,
+  "wpa_std": 0.06392470716484114,
+  "train_rmse": 0.06390955197069706,
+  "optimal_baseline": 0.06768
 }
